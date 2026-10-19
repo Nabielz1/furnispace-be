@@ -1,0 +1,36 @@
+@baseUrl = http://localhost:5090
+
+### System info
+GET {{baseUrl}}/furnispace/api/v1/
+Accept: application/json
+X-Trace-Id: local-development
+
+### Health check
+GET {{baseUrl}}/health
+
+### Database health check
+GET {{baseUrl}}/furnispace/api/v1/health/database
+
+### Register
+POST {{baseUrl}}/furnispace/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "email": "customer@example.com",
+  "password": "Password123",
+  "fullName": "FurniSpace Customer",
+  "phoneNumber": "081234567890"
+}
+
+### Login
+POST {{baseUrl}}/furnispace/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "customer@example.com",
+  "password": "Password123"
+}
+
+### Current user
+GET {{baseUrl}}/furnispace/api/v1/auth/me
+Authorization: Bearer {{accessToken}}

@@ -1,0 +1,359 @@
+{
+  "info": {
+    "_postman_id": "1242d9c2-e02a-4f4f-a4f8-56c577056e84",
+    "name": "FurniSpace API",
+    "description": "Postman collection untuk FurniSpace ASP.NET Core API. Pilih environment `FurniSpace Local`, jalankan API, lalu eksekusi request secara berurutan. Login, Register, dan Refresh otomatis menyimpan token ke environment.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "System",
+      "description": "Endpoint status aplikasi dan database.",
+      "item": [
+        {
+          "name": "Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Service is healthy', function () {",
+                  "    pm.expect(pm.response.text()).to.eql('Healthy');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Memeriksa proses API. Response yang diharapkan: HTTP 200 dengan body `Healthy`."
+          },
+          "response": []
+        },
+        {
+          "name": "API Information",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Uses standard response envelope', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.success).to.eql(true);",
+                  "    pm.expect(json.data.name).to.eql('FurniSpace API');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Trace-Id",
+                "value": "postman-{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/furnispace/api/v1/",
+              "host": ["{{baseUrl}}"],
+              "path": ["furnispace", "api", "v1", ""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Database Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('PostgreSQL is connected', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('Healthy');",
+                  "    pm.expect(json.database).to.eql('furnispace_db');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/furnispace/api/v1/health/database",
+              "host": ["{{baseUrl}}"],
+              "path": ["furnispace", "api", "v1", "health", "database"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "description": "Jalankan Register sekali untuk membuat customer. Setelah itu Login dapat digunakan berulang kali.",
+      "item": [
+        {
+          "name": "Register Customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201 or email already exists', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 409]);",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.environment.set('accessToken', json.data.accessToken);",
+                  "    pm.environment.set('refreshToken', json.data.refreshToken);",
+                  "    pm.environment.set('userId', json.data.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\",\n  \"fullName\": \"FurniSpace Customer\",\n  \"phoneNumber\": \"081234567890\"\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/furnispace/api/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["furnispace", "api", "v1", "auth", "register"]
+            },
+            "description": "Mendaftarkan customer baru. Password minimal 8 karakter dan harus memiliki huruf besar, huruf kecil, serta angka."
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "if (json.success) {",
+                  "    pm.environment.set('accessToken', json.data.accessToken);",
+                  "    pm.environment.set('refreshToken', json.data.refreshToken);",
+                  "    pm.environment.set('userId', json.data.user.id);",
+                  "}",
+                  "pm.test('Tokens are returned', function () {",
+                  "    pm.expect(json.data.accessToken).to.be.a('string').and.not.empty;",
+                  "    pm.expect(json.data.refreshToken).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{customerEmail}}\",\n  \"password\": \"{{customerPassword}}\"\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/furnispace/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["furnispace", "api", "v1", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Current User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Returns authenticated user', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.data.id).to.eql(pm.environment.get('userId'));",
+                  "    pm.expect(json.data.email).to.eql(pm.environment.get('customerEmail'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/furnispace/api/v1/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["furnispace", "api", "v1", "auth", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "if (json.success) {",
+                  "    pm.environment.set('accessToken', json.data.accessToken);",
+                  "    pm.environment.set('refreshToken', json.data.refreshToken);",
+                  "}",
+                  "pm.test('Rotated tokens are returned', function () {",
+                  "    pm.expect(json.data.accessToken).to.be.a('string').and.not.empty;",
+                  "    pm.expect(json.data.refreshToken).to.be.a('string').and.not.empty;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/furnispace/api/v1/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["furnispace", "api", "v1", "auth", "refresh"]
+            },
+            "description": "Melakukan rotation: refresh token lama dicabut dan token baru disimpan otomatis."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "if (pm.response.code === 200) {",
+                  "    pm.environment.unset('accessToken');",
+                  "    pm.environment.unset('refreshToken');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": { "language": "json" }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/furnispace/api/v1/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["furnispace", "api", "v1", "auth", "logout"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.request.headers.upsert({ key: 'Accept', value: 'application/json' });",
+          "pm.request.headers.upsert({ key: 'X-Trace-Id', value: 'postman-' + pm.variables.replaceIn('{{$guid}}') });"
+        ]
+      }
+    }
+  ],
+  "variable": []
+}
